@@ -1,71 +1,267 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <title>あおい株分析</title>
-  <style>
-    :root{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;color:#111827;background:#f3f4f6}
-    *{box-sizing:border-box} body{margin:0}.wrap{max-width:720px;margin:auto;padding:18px}
-    header{padding:10px 0 18px} h1{margin:0;font-size:27px}.sub{color:#6b7280;margin-top:5px}
-    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 5px 20px #0000000d;margin-bottom:14px}
-    label{font-weight:700;display:block;margin:10px 0 6px}input,textarea{width:100%;border:1px solid #d1d5db;border-radius:12px;padding:13px;font-size:16px}
-    textarea{min-height:72px}.pick{display:block;border:2px dashed #c7cad1;border-radius:16px;padding:24px;text-align:center;cursor:pointer}
-    #file{display:none}#preview{width:100%;max-height:420px;object-fit:contain;border-radius:12px;margin-top:12px;display:none}
-    .row{display:flex;align-items:center;gap:10px;margin:14px 0}.row input{width:auto}
-    button{width:100%;border:0;border-radius:14px;padding:15px;background:#111827;color:#fff;font-size:17px;font-weight:800}
-    button:disabled{opacity:.5}.result{white-space:pre-wrap;line-height:1.72;font-size:15.5px}.status{text-align:center;color:#6b7280;padding:8px}
-    .tiny{font-size:12px;color:#6b7280;margin-top:10px}
-  </style>
-</head>
-<body>
-<div class="wrap">
-<header><h1>あおい株分析 📈</h1><div class="sub">チャートを送って、いつもの分析。</div></header>
-<div class="card">
-  <label>銘柄名・コード</label>
-  <input id="symbol" placeholder="例：5016 JX金属">
-  <label>追加メモ（任意）</label>
-  <textarea id="note" placeholder="例：2〜5日目線。今日の上ヒゲを重視して。"></textarea>
-  <label>チャート画像</label>
-  <label class="pick" for="file">📷 写真を撮る / 画像を選ぶ</label>
-  <input id="file" type="file" accept="image/*">
-  <img id="preview" alt="チャートプレビュー">
-  <div class="row"><input id="web" type="checkbox" checked><label for="web" style="margin:0">🌐 最新情報もWeb検索する</label></div>
-  <button id="go">あおい分析する</button>
-  <div class="tiny">画像の数値が不鮮明な場合は断定せず、条件付きで分析します。</div>
-</div>
-<div id="status" class="status"></div>
-<div id="outCard" class="card" style="display:none"><div id="out" class="result"></div></div>
-</div>
-<script>
-let imageDataUrl = "";
-const file = document.getElementById("file"), preview = document.getElementById("preview");
-file.addEventListener("change", () => {
-  const f = file.files?.[0]; if(!f) return;
-  if(f.size > 12*1024*1024){ alert("画像が大きすぎます。12MB以下にしてください。"); file.value=""; return; }
-  const r = new FileReader();
-  r.onload = () => { imageDataUrl=r.result; preview.src=r.result; preview.style.display="block"; };
-  r.readAsDataURL(f);
-});
-document.getElementById("go").onclick = async () => {
-  if(!imageDataUrl){ alert("まずチャート画像を選んでね。"); return; }
-  const btn=document.getElementById("go"), status=document.getElementById("status"), card=document.getElementById("outCard"), out=document.getElementById("out");
-  btn.disabled=true; status.textContent="あおい分析中… 📈"; card.style.display="none";
-  try{
-    const resp=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      symbol:document.getElementById("symbol").value,
-      note:document.getElementById("note").value,
-      webSearch:document.getElementById("web").checked,
-      imageDataUrl
-    })});
-    const data=await resp.json();
-    if(!resp.ok) throw new Error(data.error||"エラー");
-    out.textContent=data.text; card.style.display="block"; status.textContent="";
-  }catch(e){ status.textContent="⚠️ "+e.message; }
-  finally{btn.disabled=false;}
-};
-if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
-</script>
-</body></html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>あおい株分析</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+    font-family:system-ui,-apple-system,sans-serif;
+      background:#f3f4f6;
+        color:#111827;
+        }
+
+        .wrap{
+          max-width:680px;
+            margin:auto;
+              padding:28px 18px 50px;
+              }
+
+              h1{
+                font-size:32px;
+                  margin:0 0 4px;
+                  }
+
+                  .sub{
+                    color:#6b7280;
+                      font-size:18px;
+                        margin-bottom:28px;
+                        }
+
+                        .card{
+                          background:white;
+                            border-radius:22px;
+                              padding:22px;
+                                box-shadow:0 8px 25px rgba(0,0,0,.07);
+                                }
+
+                                label{
+                                  display:block;
+                                    font-size:18px;
+                                      font-weight:700;
+                                        margin:0 0 8px;
+                                        }
+
+                                        input,textarea{
+                                          width:100%;
+                                            border:1px solid #d1d5db;
+                                              border-radius:15px;
+                                                padding:15px;
+                                                  font-size:17px;
+                                                    margin-bottom:20px;
+                                                      background:white;
+                                                      }
+
+                                                      textarea{
+                                                        min-height:100px;
+                                                          resize:vertical;
+                                                          }
+
+                                                          #file{
+                                                            display:none;
+                                                            }
+
+                                                            .photo{
+                                                              display:block;
+                                                                width:100%;
+                                                                  padding:25px 10px;
+                                                                    border:2px dashed #c7cbd1;
+                                                                      border-radius:18px;
+                                                                        text-align:center;
+                                                                          font-size:18px;
+                                                                            font-weight:700;
+                                                                              cursor:pointer;
+                                                                                margin-bottom:14px;
+                                                                                }
+
+                                                                                #preview{
+                                                                                  width:100%;
+                                                                                    max-height:450px;
+                                                                                      object-fit:contain;
+                                                                                        display:none;
+                                                                                          margin:12px 0 18px;
+                                                                                            border-radius:12px;
+                                                                                            }
+
+                                                                                            .check{
+                                                                                              display:flex;
+                                                                                                align-items:center;
+                                                                                                  gap:10px;
+                                                                                                    margin:15px 0 22px;
+                                                                                                      font-weight:700;
+                                                                                                      }
+
+                                                                                                      .check input{
+                                                                                                        width:20px;
+                                                                                                          height:20px;
+                                                                                                            margin:0;
+                                                                                                            }
+
+                                                                                                            button{
+                                                                                                              width:100%;
+                                                                                                                border:0;
+                                                                                                                  border-radius:18px;
+                                                                                                                    padding:18px;
+                                                                                                                      background:#101827;
+                                                                                                                        color:white;
+                                                                                                                          font-size:20px;
+                                                                                                                            font-weight:800;
+                                                                                                                              cursor:pointer;
+                                                                                                                              }
+
+                                                                                                                              .note{
+                                                                                                                                margin-top:15px;
+                                                                                                                                  color:#6b7280;
+                                                                                                                                    font-size:13px;
+                                                                                                                                      line-height:1.6;
+                                                                                                                                      }
+                                                                                                                                      </style>
+                                                                                                                                      </head>
+
+                                                                                                                                      <body>
+
+                                                                                                                                      <div class="wrap">
+
+                                                                                                                                      <h1>あおい株分析 📈</h1>
+                                                                                                                                      <div class="sub">チャートを送って、いつもの分析。</div>
+
+                                                                                                                                      <div class="card">
+
+                                                                                                                                      <label>銘柄名・コード</label>
+                                                                                                                                      <input
+                                                                                                                                       id="stock"
+                                                                                                                                        placeholder="例：3350 メタプラネット"
+                                                                                                                                        >
+
+                                                                                                                                        <label>追加メモ（任意）</label>
+                                                                                                                                        <textarea
+                                                                                                                                         id="memo"
+                                                                                                                                          placeholder="例：2〜5日目線。今日の上ヒゲを重視して。"
+                                                                                                                                          ></textarea>
+
+                                                                                                                                          <label>チャート画像</label>
+
+                                                                                                                                          <label class="photo" for="file">
+                                                                                                                                          📷 写真を撮る / 画像を選ぶ
+                                                                                                                                          </label>
+
+                                                                                                                                          <input
+                                                                                                                                           id="file"
+                                                                                                                                            type="file"
+                                                                                                                                             accept="image/*"
+                                                                                                                                             >
+
+                                                                                                                                             <img id="preview">
+
+                                                                                                                                             <div class="check">
+                                                                                                                                             <input id="web" type="checkbox" checked>
+                                                                                                                                             <span>🌐 最新情報もWeb検索する</span>
+                                                                                                                                             </div>
+
+                                                                                                                                             <button id="analyze">
+                                                                                                                                             あおい分析する
+                                                                                                                                             </button>
+
+                                                                                                                                             <div class="note">
+                                                                                                                                             画像はここでプレビューできます。<br>
+                                                                                                                                             分析ボタンを押すと、銘柄・分析条件をChatGPTへ渡します。
+                                                                                                                                             </div>
+
+                                                                                                                                             </div>
+                                                                                                                                             </div>
+
+                                                                                                                                             <script>
+
+                                                                                                                                             const file = document.getElementById("file");
+                                                                                                                                             const preview = document.getElementById("preview");
+
+                                                                                                                                             file.addEventListener("change", () => {
+
+                                                                                                                                               const selected = file.files[0];
+
+                                                                                                                                                 if(!selected) return;
+
+                                                                                                                                                   preview.src = URL.createObjectURL(selected);
+                                                                                                                                                     preview.style.display = "block";
+
+                                                                                                                                                     });
+
+                                                                                                                                                     document.getElementById("analyze").addEventListener("click", async () => {
+
+                                                                                                                                                       const stock =
+                                                                                                                                                           document.getElementById("stock").value.trim();
+
+                                                                                                                                                             const memo =
+                                                                                                                                                                 document.getElementById("memo").value.trim();
+
+                                                                                                                                                                   const web =
+                                                                                                                                                                       document.getElementById("web").checked;
+
+                                                                                                                                                                         if(!stock){
+                                                                                                                                                                             alert("銘柄名かコードを入力してね");
+                                                                                                                                                                                 return;
+                                                                                                                                                                                   }
+
+                                                                                                                                                                                     let prompt =
+                                                                                                                                                                                     `あおい、株分析して。
+
+                                                                                                                                                                                     【銘柄】
+                                                                                                                                                                                     ${stock}
+
+                                                                                                                                                                                     【分析目線】
+                                                                                                                                                                                     短期：2〜5日
+                                                                                                                                                                                     中期：約1ヶ月
+
+                                                                                                                                                                                     【分析してほしい項目】
+                                                                                                                                                                                     ・チャート形状
+                                                                                                                                                                                     ・ローソク足
+                                                                                                                                                                                     ・出来高
+                                                                                                                                                                                     ・移動平均線
+                                                                                                                                                                                     ・支持線と抵抗線
+                                                                                                                                                                                     ・エントリー候補
+                                                                                                                                                                                     ・利確候補
+                                                                                                                                                                                     ・損切りライン
+                                                                                                                                                                                     ・上昇シナリオ
+                                                                                                                                                                                     ・下落シナリオ
+                                                                                                                                                                                     ・結論`;
+
+                                                                                                                                                                                       if(memo){
+                                                                                                                                                                                           prompt += `
+
+                                                                                                                                                                                           【追加条件】
+                                                                                                                                                                                           ${memo}`;
+                                                                                                                                                                                             }
+
+                                                                                                                                                                                               if(web){
+                                                                                                                                                                                                   prompt += `
+
+                                                                                                                                                                                                   最新のIR・決算・材料・ニュースも確認して、
+                                                                                                                                                                                                   ファンダメンタルズとテクニカルを合わせて分析して。`;
+                                                                                                                                                                                                     }
+
+                                                                                                                                                                                                       if(file.files.length){
+                                                                                                                                                                                                           prompt += `
+
+                                                                                                                                                                                                           チャート画像も選択済み。
+                                                                                                                                                                                                           このあと画像をChatGPTに添付して分析する。`;
+                                                                                                                                                                                                             }
+
+                                                                                                                                                                                                               try{
+                                                                                                                                                                                                                   await navigator.clipboard.writeText(prompt);
+                                                                                                                                                                                                                     }catch(e){}
+
+                                                                                                                                                                                                                       window.location.href =
+                                                                                                                                                                                                                           "https://chatgpt.com/?q=" +
+                                                                                                                                                                                                                               encodeURIComponent(prompt);
+
+                                                                                                                                                                                                                               });
+
+                                                                                                                                                                                                                               </script>
+
+                                                                                                                                                                                                                               </body>
+                                                                                                                                                                                                                               </html>
